@@ -52,12 +52,6 @@ app.main = function() {
                                                             draggable: true}));
         });
 
-        $("#searchAddress").bind("submit", function(e){
-            var address = document.getElementById('address').value;
-            busMap._mapAddressFinder.addMarkerAtAddress(address);
-            e.preventDefault();
-        });
-
     },
     url:function() {
         return app.params.urlFusionTable+"?sql=SELECT geometry FROM "+app.params.idFusionTable+" WHERE CODIGO_RUT='"+this.name+"'&key="+app.params.keyFusionTable+"&callback=?";
@@ -89,9 +83,9 @@ app.main = function() {
                         bounds.extend(coordinate);
                         return coordinate;
                     });
+                    lines.push(createPoly(geometry.coordinates,"midline",setArrows,map));
                     return geometry.coordinates;
                 });
-                lines.push(createPoly(_.flatten(row.geometries.coordinates),"midline",setArrows,map));
             }
             else {
                 row.geometry.coordinates=_.map(row.geometry.coordinates,function(coord) {
@@ -133,41 +127,6 @@ app.main = function() {
         });
         //reinit set of arrows
         this.setArrows.arrows=[];
-    }
-});
-
-var MapAddressFinder = Backbone.Model.extend({
-    _geocoder : new google.maps.Geocoder(),
-    _fortalezaBounds : new google.maps.LatLngBounds(new google.maps.LatLng(-3.87,-38.65),new google.maps.LatLng(-3.691682,-38.4)),
-
-    addMarkerAtAddress : function(address) {
-      this.locationForAddress(address,function(firstHitLocation){
-        busMap.getMap().setCenter(firstHitLocation);
-        busMap._markerList.add(new google.maps.Marker({ position: firstHitLocation,
-                                                        map: busMap.getMap(),
-                                                        draggable: true }));
-      });
-    },
-
-    forceResultsInBounds : function(results, bounds){
-      return _.select(results,function(result){
-        return bounds.contains(result.geometry.location);
-      });
-    },
-
-    locationForAddress : function(address,callback) {
-      var addressFinder = this;
-      this._geocoder.geocode( { 'address': address , 'bounds': this._fortalezaBounds , 'region': 'br'}, function(results, status) {
-
-       var resultsInFortaleza = addressFinder.forceResultsInBounds(results, addressFinder._fortalezaBounds);
-
-        if (status == google.maps.GeocoderStatus.OK && resultsInFortaleza.length>0) {
-          $(".noaddressfound").addClass("hidden");
-          callback(resultsInFortaleza[0].geometry.location);
-        } else {
-          $(".noaddressfound").removeClass("hidden");
-        }
-      });
     }
 });
 
@@ -288,7 +247,7 @@ var MarkerList = Backbone.Collection.extend({
                             if(mark.name){
                               return {name: mark.name, index: i};
                             }else{
-                              return {name: 'Ponto '+(i+1),index: i};
+                              return {name: 'Punto '+(i+1),index: i};
                             };
                             })};
         },
@@ -408,7 +367,6 @@ var BusMap = Backbone.Router.extend({
         this._lineList=new LineList();
         this._markerList=new MarkerList();
         this._map=new Map({ _fitBounds: true});
-        this._mapAddressFinder = new MapAddressFinder();
         this.ready();
     },
     
