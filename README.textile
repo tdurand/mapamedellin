@@ -1,11 +1,14 @@
-h3. Mapa de onibus de Fortaleza
+h3. Mapa de bus de Medellin
 
-*NB: The data are not automatically updated.*
+*NB: The data is not automatically updated.*
 
-Application for visualizing bus lines of Fortaleza:
+Application for visualizing bus lines of Medellin:
 
-* The data are from "Etufor":http://www.fortaleza.ce.gov.br/etufor/index.php?option=com_content&task=view&id=278 .
+* The data is from "Secretaría de Transportes y Tránsito de Medellín":http://www.medellin.gov.co/transito/ .
 * The application uses Google Fusion Table to manipulate data
 * Thanks to : "wolpil.de":http://www.wolfpil.de/v3/arrow-heads.html for the code of arrows for polylines
+
+You can read an article on my blog about the story of this project, done in when i was in Fortaleza in Brazil and quickly adapted to fit the data of Medellin: 
+http://www.thibault-durand.fr/post/31393552608/how-i-created-a-bus-map-of-fortaleza-brazil
 
 _Licensed under the CC BY-NC-SA 3.0 license: http://creativecommons.org/licenses/by-nc-sa/3.0/, Copyright by tdurand, 2012_
