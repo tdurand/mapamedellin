@@ -2,7 +2,7 @@ var app={};
 
 app.params = {
     urlFusionTable : "https://www.googleapis.com/fusiontables/v1/query",
-    idFusionTable: "1ugP-dIxvkhmfuMNfZo_NyIQs5kMGpaFMbP7YG2o",
+    idFusionTable: "1_ihDJT-_zFRLXb526aaS0Ct3TiXTlcPDy_BlAz0",
     keyFusionTable: "AIzaSyC59BP_KRtQDLeb5XM_x0eQNT_tdlBbHZc"
 }
 
@@ -13,7 +13,7 @@ app.main = function() {
     _fitBounds : false,
     
     initialize : function() {
-        this.myLatlng = new google.maps.LatLng(-3.71969,-38.52562);
+        this.myLatlng = new google.maps.LatLng(6.235925,-75.57513699999998);
         this.myOptions = {
           zoom: 13,
           center: this.myLatlng,
@@ -46,7 +46,7 @@ app.main = function() {
         this.drawingManager.setMap(this.map);
         var drawingManager=this.drawingManager;
 
-        $(".addmarker").bind("touchstart click",function() {
+        $(".addmarker").bind("click",function() {
             busMap._markerList.add(new google.maps.Marker({position: busMap.getMap().center ,
                                                             map: busMap.getMap() ,
                                                             draggable: true}));
@@ -60,11 +60,7 @@ app.main = function() {
 
     },
     url:function() {
-        //HACK because etufor data set is not consistent
-        if(this.name!=undefined && this.name.length==2) {
-            this.name=this.name+" -";
-        }
-        return app.params.urlFusionTable+"?sql=SELECT geometry FROM "+app.params.idFusionTable+" WHERE name STARTS WITH '"+this.name+"'&key="+app.params.keyFusionTable+"&callback=?";
+        return app.params.urlFusionTable+"?sql=SELECT geometry FROM "+app.params.idFusionTable+" WHERE CODIGO_RUT='"+this.name+"'&key="+app.params.keyFusionTable+"&callback=?";
     },
     parse : function(response) {
         //Clear map
@@ -83,15 +79,28 @@ app.main = function() {
         //Bounds to get the center of the line
         var bounds = new google.maps.LatLngBounds();
 
+
         //For each coordinate, create a gmap.Latlng object, and display it
         response.rows=_.each(response.rows,function (row){
-            row.geometry.coordinates=_.map(row.geometry.coordinates,function(coord) {
-                var coordinate=new google.maps.LatLng(coord[1],coord[0]);
-                bounds.extend(coordinate);
-                return coordinate;
-
-            });
-            lines.push(createPoly(row.geometry.coordinates,"midline",setArrows,map));
+            if(row.type == "GeometryCollection") {
+                row.geometries.coordinates = _.map(row.geometries, function(geometry) {
+                    geometry.coordinates = _.map(geometry.coordinates,function(coord) {
+                        var coordinate=new google.maps.LatLng(coord[1],coord[0]);
+                        bounds.extend(coordinate);
+                        return coordinate;
+                    });
+                    return geometry.coordinates;
+                });
+                lines.push(createPoly(_.flatten(row.geometries.coordinates),"midline",setArrows,map));
+            }
+            else {
+                row.geometry.coordinates=_.map(row.geometry.coordinates,function(coord) {
+                    var coordinate=new google.maps.LatLng(coord[1],coord[0]);
+                    bounds.extend(coordinate);
+                    return coordinate;
+                });
+                lines.push(createPoly(row.geometry.coordinates,"midline",setArrows,map));
+            }
         });
 
         if(this._fitBounds) { 
@@ -199,14 +208,11 @@ var MapAddressFinder = Backbone.Model.extend({
         this.fetchLines();
     },
     url:function() {
-       return app.params.urlFusionTable+"?sql=SELECT name FROM "+app.params.idFusionTable+" WHERE ST_INTERSECTS(geometry,CIRCLE(LATLNG("+this.marker.getPosition().lat()+","+this.marker.getPosition().lng()+"),"+this._radius+"))&key="+app.params.keyFusionTable+"&callback=?";
+       return app.params.urlFusionTable+"?sql=SELECT Nombre_Rut,CODIGO_RUT FROM "+app.params.idFusionTable+" WHERE ST_INTERSECTS(geometry,CIRCLE(LATLNG("+this.marker.getPosition().lat()+","+this.marker.getPosition().lng()+"),"+this._radius+"))&key="+app.params.keyFusionTable+"&callback=?";
     },
     parse : function(response) {
-      response.rows=_.flatten(response.rows);
-      //we remove the last part of the 
       response.rows=_.map(response.rows,function(row) {
-          var array=row.split("-");
-          return array[0]+"-"+array[1];
+            return { num: row[1],label: row[0]};
       });
       //throw away duplicate values
       response.rows=_.uniq(response.rows);
@@ -257,12 +263,20 @@ var MarkerList = Backbone.Collection.extend({
             
         },
         computeLineList : function(){
-            var markers_routes = this.models.map(function(mark){return mark.attributes.rows});
+            var self = this;
+            var markers_routes = this.models.map(function(mark){
+                mark.routes_rows = _.map(mark.attributes.rows, function(row) {
+                    return row.num;
+                });
+                return mark.routes_rows;
+            });
             var linesIntersection=_.intersection.apply(this,markers_routes);
             var response={
-                rows: linesIntersection.map(function(row) {
-                  var array=row.split("-");
-                  return { num: array[0],label: array[0]+array[1]};
+                rows: linesIntersection.map(function(num) {
+                  return { num: num,
+                            //UGLY to refactor to get the label
+                            label: _.find(self.models[0].attributes.rows,function(row) { return row.num == num; }).label
+                        };
                 }),
                 _totalLines : linesIntersection.length
             };
@@ -309,10 +323,10 @@ var LineList = Backbone.Model.extend({
         this.fetch();
     },
     url:function() {
-        return app.params.urlFusionTable+"?sql=SELECT name FROM "+app.params.idFusionTable+"&key="+app.params.keyFusionTable+"&callback=?";
+        return app.params.urlFusionTable+"?sql=SELECT Nombre_Rut,CODIGO_RUT FROM "+app.params.idFusionTable+"&key="+app.params.keyFusionTable+"&callback=?";
     },
     parse : function(response) {
-        response.rows=_.flatten(response.rows);
+        // response.rows=_.flatten(response.rows);
 
         //if line found
         if(response.rows.length>0) {
@@ -322,23 +336,9 @@ var LineList = Backbone.Model.extend({
         else {
             busMap.maintenanceMode(true);
         }
-
-        var rowTampon="";
-        
-        response.rows=_.reject(response.rows,function(row) {
-            if(row.split("-")[2]==" Volta" && row.split("-")[1]==rowTampon) {
-                rowTampon=row.split("-")[1];
-                return true;
-            }
-            else {
-                rowTampon=row.split("-")[1];
-                return false;
-            }
-        });
         
         response.rows=_.map(response.rows,function(row) {
-            var array=row.split("-");
-            return { num: array[0],label: array[0]+array[1]};
+            return { num: row[1],label: row[0]};
         });
 
         response._totalLines=response.rows.length;
@@ -372,7 +372,7 @@ var LineListSelectView = Backbone.View.extend({
         return this;
     },
     setSelected : function(numLine) {
-        $(".chzn-select").val(numLine+' ');
+        $(".chzn-select").val(numLine);
         $(".chzn-select").trigger("liszt:updated");
     },
 });
@@ -381,7 +381,7 @@ var LineListSidebarView = Backbone.View.extend({
     el : $("#linelistsidebar"),
     render: function() {
         $(this.$el).html(ich.lineListSidebar(this.model.toJSON()));
-        $("#linelistsidebar td").bind("click touchstart",function (e) { 
+        $("#linelistsidebar td").bind("click",function (e) { 
              var num=$(this).attr("data-num");
              busMap._map._fitBounds=true;
              busMap.displayLine(num);
@@ -391,7 +391,7 @@ var LineListSidebarView = Backbone.View.extend({
     },
     setSelected: function(numLine) {
         $("#linelistsidebar tr").removeClass("selected");
-        $("#linelistsidebar td:contains("+numLine+")").parent().addClass("selected");
+        $("#linelistsidebar td[data-num='"+numLine+"']").parent().addClass("selected");
     }
 });
 
@@ -435,7 +435,7 @@ var BusMap = Backbone.Router.extend({
 
     noLinesFound : function() {
         $(".nolinesfound").removeClass("hidden");
-        this._map.ready();
+        this.ready();
         this._map.clear();
     },
 
