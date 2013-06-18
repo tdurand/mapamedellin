@@ -2,6 +2,8 @@ h3. Mapa de bus de Medellin
 
 *NB: The data is not automatically updated.*
 
+*I'm not proud at all of the current code base, i wrote it 2 years ago and i'm planning a complete refactoring when i'll have some spare time*
+
 Application for visualizing bus lines of Medellin:
 
 * The data is from "Secretaría de Transportes y Tránsito de Medellín":http://www.medellin.gov.co/transito/ .
