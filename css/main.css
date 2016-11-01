@@ -71,3 +71,7 @@ Enable overflow: auto on elements with overthrow class when html element has ove
 .fb_iframe_widget {
   display:block !important;
 }
+
+.app {
+  margin-top:5px;
+}
